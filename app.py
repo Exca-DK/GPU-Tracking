@@ -11,7 +11,7 @@ from scrape.ScraperPoolManager import ScrapeManager
 
 class App():
 
-    def run():
+    def run(self):
         load_dotenv()
         TOKEN = os.getenv("WEBHOOK_URL")
         HEADERS = ast.literal_eval(os.getenv("HEADERS"))
@@ -34,8 +34,7 @@ class App():
     # Manager.StopScrappers()
 
 
-
+app = App()
 
 if __name__ == "__main__":
-    app = App()
     app.run()
