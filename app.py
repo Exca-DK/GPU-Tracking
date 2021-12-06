@@ -23,10 +23,10 @@ class App():
 
         Manager = ScrapeManager(5)
         Manager.AddScraper(Morele3080, heartbeat=60, model=3080)
-        Manager.AddScraper(XKom3080, heartbeat=60, model=3060)
+        Manager.AddScraper(XKom3080, heartbeat=60, model=3080)
         Manager.AddScraper(Mediaexpert3080, heartbeat=60, model=3080)
-        Manager.AddScraper(Euro3080, heartbeat=60, model=3060)
-        Manager.AddScraper(Proline3080, heartbeat=60, model=3060)
+        Manager.AddScraper(Euro3080, heartbeat=60, model=3080)
+        Manager.AddScraper(Proline3080, heartbeat=60, model=3080)
 
 
     # time.sleep(300)

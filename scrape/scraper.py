@@ -19,6 +19,7 @@ class BaseScraper(ABC):
     alert: BaseAlert = None
     filter: BaseScraperFilter = None
     user_agent: str = None
+    ran: bool = False
 
     @abstractmethod
     def __init__(self, alert: BaseAlert) -> None:
@@ -45,27 +46,32 @@ class BaseScraper(ABC):
             data = self.GetData(gpu_version)
             gpus = self.Parse(data)
             self.Compare(gpus)
-            print(loops)
-            loops += 1           
+            print(f"{self.name} loop - {loops}")
+            loops += 1          
+            if (loops%1440==0):
+                self.ran = False
+                self.gpus = {} 
+                print(f"{self.name} restarted cache")
             time.sleep(heartbeat+random.randrange(heartbeat/10))
 
     def Compare(self, data: Dict[int, ShopGPU]):
-        counter = 0
         cache = []
         for key, value in data.items():
             if key not in self.gpus:
                 self.gpus[key] = value
                 cache.append(value)
-                counter += 1
                 if(len(cache)==9):
-                    self.alert.Format(cache)
-                    self.alert.SendNotification()
+                    if self.ran:
+                        self.alert.Format(cache)
+                        self.alert.SendNotification()
                     cache = []
-                    counter = 0
-                    return
         if(len(cache)>0):
-            self.alert.Format(cache)
-            self.alert.SendNotification()
+            if self.ran:
+                self.alert.Format(cache)
+                self.alert.SendNotification()
+            cache = []
+        self.ran = True
+            
 
         #remove gpu if it is no longer avaiable
         for key, value in self.gpus.items():
@@ -87,6 +93,7 @@ class MoreleScraper(BaseScraper):
 
     def GetData(self, model: str) -> BeautifulSoup:
             r = get(f"{self.url}{model}")
+            print(f"Morele response - {r}")
             return BeautifulSoup(r.content, "html.parser")            
 
     def Parse(self, soup: BeautifulSoup) -> dict[int, ShopGPU]:
@@ -129,6 +136,7 @@ class XKomScraper(BaseScraper):
     def GetData(self, model: str) -> BeautifulSoup:
             self.url = self.url.replace("GPUVERSION", str(model))
             r = get(self.url, headers=self.headers)
+            print(f"XKOM response - {r}")
             return BeautifulSoup(r.content, "html.parser")            
 
     def Parse(self, soup: BeautifulSoup) -> dict[int, ShopGPU]:
@@ -172,6 +180,7 @@ class MediaexpertScraper(BaseScraper):
 
     def GetData(self, model: str) -> BeautifulSoup:
             r = get(f"{self.url}{model}")
+            print(f"MediaExpert response - {r}")
             return BeautifulSoup(r.content, "html.parser")          
 
     def Parse(self, soup: BeautifulSoup) -> dict[int, ShopGPU]:
@@ -217,6 +226,7 @@ class EuroScraper(BaseScraper):
     def GetData(self, model: str) -> BeautifulSoup:
             self.url = self.url.replace("GPUVERSION", str(model))
             r = get(self.url, headers=self.headers)
+            print(f"Euro response - {r}")
             return BeautifulSoup(r.content, "html.parser")            
 
     def Parse(self, soup: BeautifulSoup) -> dict[int, ShopGPU]:
@@ -259,6 +269,7 @@ class ProlineScraper(BaseScraper):
 
     def GetData(self, model: str) -> BeautifulSoup:
             r = get(f"{self.url}{model}", headers=self.headers)
+            print(f"proline response - {r}")
             return BeautifulSoup(r.content, "html.parser")            
 
     def Parse(self, soup: BeautifulSoup) -> dict[int, ShopGPU]:
