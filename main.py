@@ -27,9 +27,9 @@ def main():
     Manager.AddScraper(Proline3080, heartbeat=60, model=3060)
 
 
-    time.sleep(300)
+    # time.sleep(300)
 
-    Manager.StopScrappers()
+    # Manager.StopScrappers()
 
 
 
