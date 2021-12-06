@@ -1,16 +1,12 @@
 
 from abc import ABC, abstractmethod
-from asyncio.windows_events import NULL
 import json
-import time
 from typing import List
 
-from requests.models import Response
-from scrape.content.GPU_Base_Data import BaseGPU, ShopGPU
 from requests import post
-import json
 
 from scrape.discord.Embed import DiscordEmbed
+from scrape.content.GPU_Base_Data import BaseGPU, ShopGPU
 from scrape.discord.Webhook import DiscordWebhook, WebhookData
 
 class BaseAlert(ABC):

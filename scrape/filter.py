@@ -1,9 +1,8 @@
-from abc import ABC
-
-
 from abc import ABC, abstractmethod
-from scrape.content.GPU_Base_Data import BaseGPU
 from dataclasses import dataclass
+
+from scrape.content.GPU_Base_Data import BaseGPU
+
 class BaseScraperFilter(ABC):
 
     @abstractmethod

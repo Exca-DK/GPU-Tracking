@@ -29,7 +29,7 @@ class BaseScraper(ABC):
         pass
 
     @abstractmethod
-    def Parse(self, soup: BeautifulSoup):
+    def Parse(self, soup: BeautifulSoup) -> Dict[int, ShopGPU]:
         pass
 
     #TODO Check whether the offer is avaiable <MORELE TENDS TO UNAVAIABLE OFFERS>
@@ -37,6 +37,7 @@ class BaseScraper(ABC):
     def Run(self, heartbeat: float, gpu_version: str):
         loop = True
         loops = 1
+        print(f"shop: {self.name}")
         print(f"heartbeat: {heartbeat}")
         print(f"gpu_version: {gpu_version}")
 
@@ -116,7 +117,7 @@ class MoreleScraper(BaseScraper):
 class XKomScraper(BaseScraper):
 
     def __init__(self, alert: BaseAlert, filter: BaseScraperFilter, headers: Dict[str, str]) -> BaseScraper:
-        self.name = "Morele"
+        self.name = "X-Kom"
         self.website = "www.x-kom.pl"
         self.url = "https://www.x-kom.pl/szukaj?q=rtx%20GPUVERSION&f%5Bgroups%5D%5B5%5D=1&f%5Bcategories%5D%5B346%5D=1"
         self.gpus: dict = {}
@@ -156,3 +157,135 @@ class XKomScraper(BaseScraper):
         return gpus
 
 
+
+class MediaexpertScraper(BaseScraper):
+
+    def __init__(self, alert: BaseAlert, filter: BaseScraperFilter, headers: Dict[str, str]) -> BaseScraper:
+        self.name = "Mediaexpert"
+        self.website = "www.mediaexpert.pl"
+        self.url = "https://www.mediaexpert.pl/komputery-i-tablety/podzespoly-komputerowe/karty-graficzne/model_geforce-rtx-"
+        self.gpus: dict = {}
+        self.alert = alert
+        self.filter = filter
+        self.headers = headers
+            
+
+    def GetData(self, model: str) -> BeautifulSoup:
+            r = get(f"{self.url}{model}")
+            return BeautifulSoup(r.content, "html.parser")          
+
+    def Parse(self, soup: BeautifulSoup) -> dict[int, ShopGPU]:
+        gpus = {}
+        products = soup.find_all("div", class_="offer-box", recursive=True)
+
+        for product in products:
+            price = product.find("div", class_="main-price")
+            if price is None:
+                continue
+            price = int(''.join(c for c in price.text if c.isdigit()))/100
+            temp = product.find("h2", class_="name")
+            link = temp.find("a")["href"]
+            name = temp.text.strip("\n")
+            gpu_info = BaseGPU(distributor=name.strip("Karta graficzna").split(" ", 1)[0].strip("\n"),
+                model=name.strip("Karta graficzna NVIDIA").split(" ", 1)[1].strip("\n"), 
+                price=price)
+
+            if self.filter.ShouldKeep(gpu_info):
+                data = ShopGPU(gpu_info=gpu_info, 
+                    link=self.website+link,
+                    timestamp=datetime.utcnow(),
+                    source=self.name
+                    )
+            #x-kom doesn't provide us with an id so we create one manually
+            gpus[hash(temp) % 10**8] = data
+
+        return gpus
+
+
+class EuroScraper(BaseScraper):
+
+    def __init__(self, alert: BaseAlert, filter: BaseScraperFilter, headers: Dict[str, str]) -> BaseScraper:
+        self.name = "RTVEuroAGD"
+        self.website = "www.euro.com.pl/"
+        self.url = "https://www.euro.com.pl/karty-graficzne,typ-chipsetu!geforce-rtx-GPUVERSION.bhtml"
+        self.gpus: dict = {}
+        self.alert = alert
+        self.filter = filter
+        self.headers = headers
+            
+
+    def GetData(self, model: str) -> BeautifulSoup:
+            self.url = self.url.replace("GPUVERSION", str(model))
+            r = get(self.url, headers=self.headers)
+            return BeautifulSoup(r.content, "html.parser")            
+
+    def Parse(self, soup: BeautifulSoup) -> dict[int, ShopGPU]:
+        gpus = {}
+        products = soup.find_all("div", class_="product-row", recursive=True)
+        for product in products:
+            price = product.find("div", class_="price-normal")
+            if price is None:
+                continue
+            temp = product.find("a", class_="js-save-keyword")
+            link = temp["href"]
+            name = temp.text.strip("\n").strip("\t").lstrip()
+            price = price.text.strip("\n")
+            price = int(''.join(c for c in price if c.isdigit()))
+            gpu_info = BaseGPU(distributor=name.split(" ", 1)[0],
+                model=name.split(" ", 1)[1], 
+                price=price)
+            if self.filter.ShouldKeep(gpu_info):
+                data = ShopGPU(gpu_info=gpu_info, 
+                    link=self.website+link,
+                    timestamp=datetime.utcnow(),
+                    source=self.name
+                    )
+
+                gpus[hash(temp) % 10**8] = data
+
+        return gpus
+
+class ProlineScraper(BaseScraper):
+
+    def __init__(self, alert: BaseAlert, filter: BaseScraperFilter, headers: Dict[str, str]) -> BaseScraper:
+        self.name = "Proline"
+        self.website = "www.proline.pl"
+        self.url = "https://proline.pl/?g=Karty+graficzne&c_chipset-model=rtx+"
+        self.gpus: dict = {}
+        self.alert = alert
+        self.filter = filter
+        self.headers = headers
+            
+
+    def GetData(self, model: str) -> BeautifulSoup:
+            r = get(f"{self.url}{model}", headers=self.headers)
+            return BeautifulSoup(r.content, "html.parser")            
+
+    def Parse(self, soup: BeautifulSoup) -> dict[int, ShopGPU]:
+        gpus = {}
+        products = soup.find_all("tr", recursive=True)
+        for product in products:
+     
+            price = product.find("td", class_="c")
+            if price is None:
+                continue
+            name = product.find("td", class_="z").find("a")["title"].strip("\t").strip("\n").strip("Dodaj do Koszyka:").lstrip()
+            temp = product.find("td", class_="o")
+            for val in price:
+                price = val
+            price = int(''.join(c for c in price if c.isdigit()))
+
+            link = temp.find("a", href=True)["href"]
+            gpu_info = BaseGPU(distributor=name.split(" ", 1)[0],
+                model=name.split(" ", 1)[1], 
+                price=price/100)
+            if self.filter.ShouldKeep(gpu_info):
+                data = ShopGPU(gpu_info=gpu_info, 
+                    link=self.website+link,
+                    timestamp=datetime.utcnow(),
+                    source=self.name
+                    )
+
+                gpus[hash(temp) % 10**8] = data
+
+        return gpus
